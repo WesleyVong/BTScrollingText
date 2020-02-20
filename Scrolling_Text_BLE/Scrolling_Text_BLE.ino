@@ -1,5 +1,6 @@
 #include <MD_Parola.h>
 #include <MD_MAX72xx.h>
+#include <EEPROM.h>
 #include <SPI.h>
 #include "Adafruit_BLE.h"
 #include "Adafruit_BluefruitLE_SPI.h"
@@ -34,9 +35,13 @@ char curMessage[BUF_SIZE] = { "" };
 char newMessage[BUF_SIZE] = { "Type Message on Phone" };
 bool newMessageAvailable = true;
 
+// Determines if the chip should save state between power cycles.
+#define SAVE_STATE true
+// Char array location in EEPROM
+#define STRING_START 1
+
 void setup()
 {
-  delay(2000);
   //Serial.begin(115200);
 
   // Setup BLE
@@ -53,7 +58,11 @@ void setup()
 //  ble.info();
 
   ble.verbose(false);  // debug info is a little annoying after this point!
-
+  if (SAVE_STATE){
+    for (int i = 0; i < BUF_SIZE; i++){
+      newMessage[i] = EEPROM[ i + STRING_START ];
+    }
+  }
   // Setup LED
   P.begin();
   P.displayText(curMessage, scrollAlign, scrollSpeed, scrollPause, scrollEffect, scrollEffect);
@@ -81,6 +90,11 @@ void readBle(void)
   ble.readline();
   if (strcmp(ble.buffer, "OK") != 0) {
     strcpy(newMessage,ble.buffer);
+    if (SAVE_STATE){
+      for (int i = 0; i < BUF_SIZE; i++){
+        EEPROM[ i + STRING_START ] = newMessage[i];
+      }
+    }
     //Serial.println(newMessage);
     ble.waitForOK();
     newMessageAvailable = true;
